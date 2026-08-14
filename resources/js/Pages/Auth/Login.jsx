@@ -15,7 +15,9 @@ export default function Login({ status }) {
 
     const submit = (e) => {
         e.preventDefault();
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         post(route('login'), {
+            headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {},
             onFinish: () => reset('password'),
         });
     };
