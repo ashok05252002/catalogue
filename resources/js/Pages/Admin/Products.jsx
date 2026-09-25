@@ -1,88 +1,70 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal';
 import { Search, Plus, Trash2, Edit2, X, Upload, ImageIcon } from 'lucide-react';
 
-// ─── Reusable premium image uploader ───────────────────────────────────────
-function ImageUpload({ label, hint, value, onChange, currentSrc, multiple = false }) {
+// ─── Cover Image Uploader ──────────────────────────────────────────────────
+function CoverImageUpload({ label, hint, currentSrc, onChange, onRemoveExisting }) {
     const [preview, setPreview] = useState(null);
-    const [accumulatedFiles, setAccumulatedFiles] = useState([]);
+
+    useEffect(() => {
+        setPreview(null);
+    }, [currentSrc]);
 
     const handleChange = (e) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-        if (multiple) {
-            const newFilesArray = Array.from(files);
-            const updatedFiles = [...accumulatedFiles, ...newFilesArray];
-            setAccumulatedFiles(updatedFiles);
-            const urls = updatedFiles.map(f => URL.createObjectURL(f));
-            setPreview(urls);
-            onChange(updatedFiles);
-        } else {
-            setPreview(URL.createObjectURL(files[0]));
-            onChange(files[0]);
-        }
+        const file = e.target.files[0];
+        if (!file) return;
+        setPreview(URL.createObjectURL(file));
+        onChange(file);
     };
 
-    const handleClear = (e) => {
+    const handleClearNew = (e) => {
         e.preventDefault();
         e.stopPropagation();
         setPreview(null);
-        if (multiple) {
-            setAccumulatedFiles([]);
-            onChange(null);
-        } else {
-            onChange(null);
-        }
+        onChange(null);
     };
 
-    const displaySrc = multiple
-        ? (preview && preview.length > 0 ? preview[0] : null)
-        : (preview || currentSrc);
+    const displaySrc = preview || currentSrc;
 
     return (
         <div className="space-y-1.5">
-            {label && (
-                <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">{label}</label>
-                    {displaySrc && (
-                        <button type="button" onClick={handleClear} className="text-[10px] font-bold text-rose-500 hover:text-rose-600 transition flex items-center gap-1">
-                            <X size={12} /> Clear
-                        </button>
-                    )}
-                </div>
-            )}
+            <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">{label}</label>
+                {preview ? (
+                    <button type="button" onClick={handleClearNew} className="text-[10px] font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1">
+                        <X size={12} /> Cancel New
+                    </button>
+                ) : currentSrc && onRemoveExisting ? (
+                    <button type="button" onClick={onRemoveExisting} className="text-[10px] font-bold text-rose-500 hover:text-rose-600 transition flex items-center gap-1">
+                        <Trash2 size={12} /> Remove Cover
+                    </button>
+                ) : null}
+            </div>
             <label className="block cursor-pointer group">
                 <div className={`relative border-2 border-dashed rounded-xl transition-all overflow-hidden
                     ${displaySrc ? 'border-slate-200 bg-slate-50' : 'border-slate-300 bg-[#F5F5F7] hover:border-slate-400'}`}
                 >
                     {displaySrc ? (
-                        // Image preview
                         <div className="relative">
                             <img
                                 src={displaySrc}
-                                alt="preview"
+                                alt="Cover preview"
                                 className="w-full h-36 object-cover"
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                 <Upload size={18} className="text-white" />
-                                <span className="text-white text-xs font-bold">{multiple ? "Add More Images" : "Change Image"}</span>
+                                <span className="text-white text-xs font-bold">Change Cover</span>
                             </div>
-                            {multiple && preview && preview.length > 1 && (
-                                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
-                                    +{preview.length - 1} more
-                                </div>
-                            )}
                         </div>
                     ) : (
-                        // Upload placeholder
                         <div className="py-6 flex flex-col items-center gap-2">
                             <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center group-hover:bg-slate-300 transition-colors">
                                 <ImageIcon size={18} className="text-slate-500" />
                             </div>
                             <div className="text-center">
-                                <p className="text-xs font-semibold text-indigo-600">Click to upload</p>
+                                <p className="text-xs font-semibold text-indigo-600">Click to upload cover</p>
                                 <p className="text-[10px] text-slate-400 mt-0.5">{hint || 'PNG, JPG, WEBP up to 2MB'}</p>
                             </div>
                         </div>
@@ -91,16 +73,129 @@ function ImageUpload({ label, hint, value, onChange, currentSrc, multiple = fals
                 <input
                     type="file"
                     accept="image/*"
-                    multiple={multiple}
                     className="sr-only"
                     onChange={handleChange}
                 />
             </label>
-            {multiple && preview && preview.length > 0 && (
-                <p className="text-[10px] text-green-600 font-semibold">✓ {preview.length} file(s) selected</p>
+            {preview && (
+                <p className="text-[10px] text-emerald-600 font-semibold">✓ New cover selected</p>
             )}
-            {!multiple && preview && (
-                <p className="text-[10px] text-green-600 font-semibold">✓ New image selected</p>
+        </div>
+    );
+}
+
+// ─── Gallery Photos Manager (Existing & New) ─────────────────────────────────
+function GalleryManager({ existingImages = [], onDeleteExisting, onChange }) {
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const [previews, setPreviews] = useState([]);
+
+    useEffect(() => {
+        setSelectedFiles([]);
+        setPreviews([]);
+    }, [existingImages]);
+
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        const updatedFiles = [...selectedFiles, ...files];
+        setSelectedFiles(updatedFiles);
+
+        const newUrls = files.map(f => ({ file: f, url: URL.createObjectURL(f) }));
+        setPreviews(prev => [...prev, ...newUrls]);
+
+        onChange(updatedFiles);
+    };
+
+    const handleRemoveStaged = (indexToRemove) => {
+        const updatedFiles = selectedFiles.filter((_, idx) => idx !== indexToRemove);
+        const updatedPreviews = previews.filter((_, idx) => idx !== indexToRemove);
+
+        setSelectedFiles(updatedFiles);
+        setPreviews(updatedPreviews);
+        onChange(updatedFiles.length > 0 ? updatedFiles : null);
+    };
+
+    return (
+        <div className="space-y-3">
+            {/* Existing photos section (when editing) */}
+            {existingImages && existingImages.length > 0 && (
+                <div className="space-y-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Saved Gallery Photos ({existingImages.length})
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                        {existingImages.map((imgUrl, idx) => (
+                            <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-200 aspect-square bg-slate-100">
+                                <img src={imgUrl} alt={`gallery-${idx}`} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (onDeleteExisting) onDeleteExisting(imgUrl);
+                                        }}
+                                        className="p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition active:scale-95 shadow-md flex items-center gap-1 text-[10px] font-bold"
+                                        title="Delete photo from catalog"
+                                    >
+                                        <Trash2 size={12} />
+                                        <span>Delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Upload new gallery photos */}
+            <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Add Gallery Photos
+                </label>
+                <label className="block cursor-pointer group">
+                    <div className="border-2 border-dashed border-slate-300 bg-[#F5F5F7] hover:border-slate-400 rounded-xl py-4 px-3 text-center transition-colors">
+                        <div className="flex flex-col items-center gap-1.5">
+                            <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center group-hover:bg-slate-300 transition-colors">
+                                <Upload size={15} className="text-slate-600" />
+                            </div>
+                            <p className="text-xs font-semibold text-indigo-600">Choose photos to add</p>
+                            <p className="text-[10px] text-slate-400">Select one or multiple images</p>
+                        </div>
+                    </div>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="sr-only"
+                        onChange={handleFileChange}
+                    />
+                </label>
+            </div>
+
+            {/* Staged new photos preview */}
+            {previews.length > 0 && (
+                <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-emerald-600">
+                        ✓ {previews.length} new photo(s) selected:
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                        {previews.map((item, idx) => (
+                            <div key={idx} className="relative group rounded-xl overflow-hidden border border-emerald-300 aspect-square bg-slate-50 shadow-sm">
+                                <img src={item.url} alt="staged" className="w-full h-full object-cover" />
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveStaged(idx)}
+                                    className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-rose-600 text-white rounded-full transition shadow"
+                                    title="Discard this photo"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             )}
         </div>
     );
@@ -108,7 +203,7 @@ function ImageUpload({ label, hint, value, onChange, currentSrc, multiple = fals
 // ───────────────────────────────────────────────────────────────────────────
 
 // Shared form fields component for DRY modal content
-const FormFields = ({ data, setData, errors, categories, brands, editingProduct }) => {
+const FormFields = ({ data, setData, errors, categories, brands, editingProduct, onDeleteCover, onDeleteGalleryImage }) => {
     const availableCategories = categories.filter(c => c.gender === data.gender);
     const availableBrands = brands.filter(b => b.gender === data.gender && Number(b.category_id) === Number(data.category_id));
 
@@ -198,18 +293,18 @@ const FormFields = ({ data, setData, errors, categories, brands, editingProduct 
             />
         </div>
 
-        {/* ── Image Uploaders ── */}
-        <div className="grid grid-cols-2 gap-3">
-            <ImageUpload
+        {/* ── Image Uploaders & Photo Manager ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CoverImageUpload
                 label="Cover Image"
                 hint="Main product photo"
                 currentSrc={editingProduct?.image_path}
                 onChange={(file) => setData('image', file)}
+                onRemoveExisting={editingProduct?.image_path && onDeleteCover ? () => onDeleteCover(editingProduct.id) : null}
             />
-            <ImageUpload
-                label="Gallery"
-                hint="Multiple photos"
-                multiple
+            <GalleryManager
+                existingImages={editingProduct?.images || []}
+                onDeleteExisting={onDeleteGalleryImage ? (imgPath) => onDeleteGalleryImage(editingProduct.id, imgPath) : null}
                 onChange={(files) => setData('images', files)}
             />
         </div>
@@ -241,6 +336,13 @@ export default function Products({ auth, products = [], brands = [], categories 
     const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
     const [selectedBrandFilter, setSelectedBrandFilter] = useState('All');
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, processing: false });
+    const [photoDeleteModal, setPhotoDeleteModal] = useState({
+        isOpen: false,
+        type: null, // 'cover' | 'gallery'
+        productId: null,
+        imagePath: null,
+        processing: false
+    });
 
     // Add Product Form
     const { 
@@ -354,6 +456,60 @@ export default function Products({ auth, products = [], brands = [], categories 
             onFinish: () => setDeleteModal(prev => ({ ...prev, processing: false })),
             preserveScroll: true
         });
+    };
+
+    const handleDeleteCover = (productId) => {
+        setPhotoDeleteModal({
+            isOpen: true,
+            type: 'cover',
+            productId,
+            imagePath: null,
+            processing: false
+        });
+    };
+
+    const handleDeleteGalleryImage = (productId, imagePath) => {
+        setPhotoDeleteModal({
+            isOpen: true,
+            type: 'gallery',
+            productId,
+            imagePath,
+            processing: false
+        });
+    };
+
+    const executePhotoDelete = () => {
+        if (!photoDeleteModal.productId) return;
+        setPhotoDeleteModal(prev => ({ ...prev, processing: true }));
+
+        if (photoDeleteModal.type === 'cover') {
+            router.delete(route('admin.products.removeCoverImage', photoDeleteModal.productId), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setEditingProduct(prev => prev ? { ...prev, image_path: null } : null);
+                    setEditData('image', null);
+                    setPhotoDeleteModal({ isOpen: false, type: null, productId: null, imagePath: null, processing: false });
+                },
+                onError: () => {
+                    setPhotoDeleteModal(prev => ({ ...prev, processing: false }));
+                }
+            });
+        } else if (photoDeleteModal.type === 'gallery') {
+            router.delete(route('admin.products.removeGalleryImage', photoDeleteModal.productId), {
+                data: { image_path: photoDeleteModal.imagePath },
+                preserveScroll: true,
+                onSuccess: () => {
+                    setEditingProduct(prev => prev ? {
+                        ...prev,
+                        images: (prev.images || []).filter(img => img !== photoDeleteModal.imagePath)
+                    } : null);
+                    setPhotoDeleteModal({ isOpen: false, type: null, productId: null, imagePath: null, processing: false });
+                },
+                onError: () => {
+                    setPhotoDeleteModal(prev => ({ ...prev, processing: false }));
+                }
+            });
+        }
     };
 
 
@@ -551,7 +707,16 @@ export default function Products({ auth, products = [], brands = [], categories 
                         </button>
                         <h3 className="text-lg font-bold text-slate-900 mb-6">Edit Catalog Item</h3>
                         <form onSubmit={handleEditSubmit} className="space-y-4">
-                            <FormFields data={editData} setData={setEditData} errors={editErrors} categories={categories} brands={brands} editingProduct={editingProduct} />
+                            <FormFields
+                                data={editData}
+                                setData={setEditData}
+                                errors={editErrors}
+                                categories={categories}
+                                brands={brands}
+                                editingProduct={editingProduct}
+                                onDeleteCover={handleDeleteCover}
+                                onDeleteGalleryImage={handleDeleteGalleryImage}
+                            />
                             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={() => { setEditingProduct(null); resetEdit(); }}
                                     className="px-4 py-2.5 text-sm font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 transition text-slate-700">
@@ -567,7 +732,7 @@ export default function Products({ auth, products = [], brands = [], categories 
                 </div>
             )}
 
-            {/* ── Confirm Delete Modal ── */}
+            {/* ── Confirm Delete Product Modal ── */}
             <ConfirmDeleteModal
                 isOpen={deleteModal.isOpen}
                 onClose={() => setDeleteModal({ isOpen: false, id: null, processing: false })}
@@ -575,6 +740,18 @@ export default function Products({ auth, products = [], brands = [], categories 
                 isProcessing={deleteModal.processing}
                 title="Delete Product"
                 message="Are you sure you want to delete this catalog item? This action cannot be undone."
+            />
+
+            {/* ── Confirm Delete Photo Modal ── */}
+            <ConfirmDeleteModal
+                isOpen={photoDeleteModal.isOpen}
+                onClose={() => setPhotoDeleteModal({ isOpen: false, type: null, productId: null, imagePath: null, processing: false })}
+                onConfirm={executePhotoDelete}
+                isProcessing={photoDeleteModal.processing}
+                title={photoDeleteModal.type === 'cover' ? "Remove Cover Photo" : "Delete Gallery Photo"}
+                message={photoDeleteModal.type === 'cover'
+                    ? "Are you sure you want to remove the cover photo from this product?"
+                    : "Are you sure you want to delete this gallery photo? It will be permanently removed from storage."}
             />
         </AdminLayout>
     );

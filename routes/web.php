@@ -24,6 +24,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/products', [ProductController::class, 'store'])->name('admin.products.store');
     Route::post('/admin/products/{product}', [ProductController::class, 'update'])->name('admin.products.update');
     Route::delete('/admin/products/{product}', [ProductController::class, 'destroy'])->name('admin.products.destroy');
+    Route::delete('/admin/products/{product}/image', [ProductController::class, 'removeCoverImage'])->name('admin.products.removeCoverImage');
+    Route::delete('/admin/products/{product}/gallery', [ProductController::class, 'removeGalleryImage'])->name('admin.products.removeGalleryImage');
 
     // Brands Routes
     Route::get('/admin/brands', [BrandController::class, 'index'])->name('admin.brands');

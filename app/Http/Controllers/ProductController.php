@@ -193,4 +193,43 @@ class ProductController extends Controller
 
         return redirect()->back()->with('success', 'Product deleted successfully.');
     }
+
+    /**
+     * Remove the cover image for a product.
+     */
+    public function removeCoverImage(Product $product): RedirectResponse
+    {
+        if ($product->image_path) {
+            $oldPath = str_replace('/storage/', '', $product->image_path);
+            Storage::disk('public')->delete($oldPath);
+            $product->update(['image_path' => null]);
+        }
+
+        return redirect()->back()->with('success', 'Cover photo removed successfully.');
+    }
+
+    /**
+     * Remove a specific gallery image for a product.
+     */
+    public function removeGalleryImage(Request $request, Product $product): RedirectResponse
+    {
+        $request->validate([
+            'image_path' => 'required|string',
+        ]);
+
+        $targetPath = $request->input('image_path');
+        $currentImages = is_array($product->images) ? $product->images : [];
+
+        if (in_array($targetPath, $currentImages)) {
+            $oldPath = str_replace('/storage/', '', $targetPath);
+            Storage::disk('public')->delete($oldPath);
+
+            $updatedImages = array_values(array_filter($currentImages, function ($img) use ($targetPath) {
+                return $img !== $targetPath;
+            }));
+            $product->update(['images' => $updatedImages]);
+        }
+
+        return redirect()->back()->with('success', 'Gallery photo removed successfully.');
+    }
 }

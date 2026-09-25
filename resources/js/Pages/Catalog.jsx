@@ -47,49 +47,37 @@ function replaceURL(gender, categoryId, brandId, productId) {
 // ---------------------------------
 
 export default function Catalog({ auth, products = [], brands = [], categories = [], genders = [] }) {
-  const [view, setView] = useState('gender');
-  const [selectedGender, setSelectedGender] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedBrand, setSelectedBrand] = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [view, setView] = useState(() => {
+    if (typeof window === 'undefined') return 'gender';
+    const { g, c, b, p } = readParamsFromURL();
+    if (g && c && b && p) return 'detail';
+    if (g && c && b) return 'products';
+    if (g && c) return 'brands';
+    if (g) return 'categories';
+    return 'gender';
+  });
+  const [selectedGender, setSelectedGender] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    return readParamsFromURL().g || null;
+  });
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const c = readParamsFromURL().c;
+    return c ? Number(c) : null;
+  });
+  const [selectedBrand, setSelectedBrand] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const b = readParamsFromURL().b;
+    return b ? Number(b) : null;
+  });
+  const [selectedProduct, setSelectedProduct] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const p = readParamsFromURL().p;
+    if (!p) return null;
+    return products.find(x => x.id === Number(p)) || null;
+  });
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // ---- Restore state from URL on initial load ----
-  useEffect(() => {
-    const { g, c, b, p } = readParamsFromURL();
-    if (!g) return; // nothing in URL → default gender view
-
-    setSelectedGender(g);
-
-    if (c) {
-      const catId = Number(c);
-      setSelectedCategory(catId);
-
-      if (b) {
-        const brandId = Number(b);
-        setSelectedBrand(brandId);
-
-        if (p) {
-          const prod = products.find(x => x.id === Number(p));
-          if (prod) {
-            setSelectedProduct(prod);
-            setView('detail');
-          } else {
-            setView('products');
-          }
-        } else {
-          setView('products');
-        }
-      } else {
-        setView('brands');
-      }
-    } else {
-      setView('categories');
-    }
-  // Only run on mount — products won't change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // ---- Browser back/forward button support ----
   useEffect(() => {
@@ -231,9 +219,18 @@ export default function Catalog({ auth, products = [], brands = [], categories =
 
   const productImages = useMemo(() => {
     if (!selectedProduct) return [];
-    const imgs = selectedProduct.images;
-    if (Array.isArray(imgs) && imgs.length > 0) return imgs;
-    return selectedProduct.image_path ? [selectedProduct.image_path] : [];
+    const list = [];
+    if (selectedProduct.image_path) {
+      list.push(selectedProduct.image_path);
+    }
+    if (Array.isArray(selectedProduct.images)) {
+      selectedProduct.images.forEach(img => {
+        if (img && !list.includes(img)) {
+          list.push(img);
+        }
+      });
+    }
+    return list;
   }, [selectedProduct]);
 
   return (
@@ -445,11 +442,18 @@ export default function Catalog({ auth, products = [], brands = [], categories =
                       className="bg-white rounded-[1.2rem] overflow-hidden group flex flex-col h-full shadow-sm hover:shadow-md transition-all cursor-pointer relative"
                     >
                       <div className="aspect-square bg-[#FBFBFD] relative overflow-hidden">
-                        <img 
-                          src={product.image_path || 'https://via.placeholder.com/600'} 
-                          alt={product.name} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                        />
+                        {product.image_path || (Array.isArray(product.images) && product.images[0]) ? (
+                          <img 
+                            src={product.image_path || product.images[0]} 
+                            alt={product.name} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-350 text-xs font-semibold">
+                            No Image
+                          </div>
+                        )}
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -491,24 +495,20 @@ export default function Catalog({ auth, products = [], brands = [], categories =
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10">
                 <div className="space-y-3">
-                  <div className="aspect-square bg-white rounded-[1.5rem] overflow-hidden shadow-sm relative group">
-                    <AnimatePresence mode="wait">
-                      {productImages.length > 0 ? (
-                        <motion.img
-                          key={activeImageIndex}
-                          src={productImages[activeImageIndex]}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.4 }}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-350">
-                          No Image
-                        </div>
-                      )}
-                    </AnimatePresence>
+                  <div className="aspect-square bg-[#F5F5F7] rounded-[1.5rem] overflow-hidden shadow-sm relative group">
+                    {productImages.length > 0 ? (
+                      <img
+                        key={productImages[activeImageIndex]}
+                        src={productImages[activeImageIndex]}
+                        alt={selectedProduct.name}
+                        className="w-full h-full object-cover transition-opacity duration-200"
+                        loading="eager"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-xs font-semibold">
+                        No Image Available
+                      </div>
+                    )}
                     
                     {productImages.length > 1 && (
                       <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
@@ -534,19 +534,21 @@ export default function Catalog({ auth, products = [], brands = [], categories =
                     )}
                   </div>
 
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    {productImages.map((img, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setActiveImageIndex(idx)}
-                        className={`w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all ${
-                          activeImageIndex === idx ? 'border-[#0071E3]' : 'border-transparent opacity-60 hover:opacity-100'
-                        }`}
-                      >
-                        <img src={img} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
+                  {productImages.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                      {productImages.map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setActiveImageIndex(idx)}
+                          className={`w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all ${
+                            activeImageIndex === idx ? 'border-[#0071E3]' : 'border-transparent opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col justify-between py-1">
