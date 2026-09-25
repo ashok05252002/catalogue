@@ -149,14 +149,14 @@ export default function Catalog({ auth, products = [], brands = [], categories =
     setSelectedGender(gender);
     setView('categories');
     pushURL(gender, null, null, null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   }, []);
 
   const handleCategoryClick = useCallback((id) => {
     setSelectedCategory(id);
     setView('brands');
     pushURL(selectedGender, id, null, null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGender]);
 
@@ -164,7 +164,7 @@ export default function Catalog({ auth, products = [], brands = [], categories =
     setSelectedBrand(id);
     setView('products');
     pushURL(selectedGender, selectedCategory, id, null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGender, selectedCategory]);
 
@@ -173,7 +173,7 @@ export default function Catalog({ auth, products = [], brands = [], categories =
     setActiveImageIndex(0);
     setView('detail');
     pushURL(selectedGender, selectedCategory, selectedBrand, product.id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGender, selectedCategory, selectedBrand]);
 
@@ -258,7 +258,8 @@ export default function Catalog({ auth, products = [], brands = [], categories =
               key="gender"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className="space-y-4"
             >
               <h1 className="text-3xl font-bold tracking-tight pt-2">Collection.</h1>
@@ -270,24 +271,25 @@ export default function Catalog({ auth, products = [], brands = [], categories =
                     : 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=800&auto=format&fit=crop';
                   const imgSrc = genderData?.image || fallback;
                   return (
-                    <motion.button
+                    <button
                       key={genderKey}
-                      whileTap={{ scale: 0.96 }}
+                      type="button"
                       onClick={() => handleGenderClick(genderKey)}
-                      className="group relative aspect-square bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-md transition-all"
+                      className="group relative aspect-square bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 text-left cursor-pointer"
                     >
                       <img
                         src={imgSrc}
                         alt={genderKey === 'men' ? 'Men' : 'Women'}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="eager"
                       />
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
+                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors duration-200" />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-white text-2xl font-bold tracking-tight capitalize">
                           {genderKey === 'men' ? 'Men' : 'Women'}
                         </span>
                       </div>
-                    </motion.button>
+                    </button>
                   );
                 })}
               </div>
@@ -298,9 +300,10 @@ export default function Catalog({ auth, products = [], brands = [], categories =
           {view === 'categories' && (
             <motion.div
               key="categories"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               className="space-y-4"
             >
               <div className="space-y-1 pt-2">
@@ -319,24 +322,27 @@ export default function Catalog({ auth, products = [], brands = [], categories =
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
-                  {availableCategories.map((cat, idx) => (
-                    <motion.button
+                  {availableCategories.map((cat) => (
+                    <button
                       key={cat.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: idx * 0.03 }}
+                      type="button"
                       onClick={() => handleCategoryClick(cat.id)}
-                      className="group relative aspect-square bg-white rounded-[1.2rem] overflow-hidden shadow-sm hover:shadow-md transition-all text-left"
+                      className="group relative aspect-square bg-[#F5F5F7] rounded-[1.2rem] overflow-hidden shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 text-left cursor-pointer"
                     >
-                      <img 
-                        src={cat.image || 'https://via.placeholder.com/400'} 
-                        alt={cat.name} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                      {cat.image ? (
+                        <img 
+                          src={cat.image} 
+                          alt={cat.name} 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="eager"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-400 text-xs font-bold" />
+                      )}
                       <div className="absolute inset-x-0 bottom-0 p-3.5 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                         <p className="text-[14px] sm:text-base font-bold text-white tracking-tight">{cat.name}</p>
                       </div>
-                    </motion.button>
+                    </button>
                   ))}
                 </div>
               )}
@@ -347,9 +353,10 @@ export default function Catalog({ auth, products = [], brands = [], categories =
           {view === 'brands' && (
             <motion.div
               key="brands"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               className="space-y-4"
             >
               <div className="space-y-1 pt-2">
@@ -368,18 +375,16 @@ export default function Catalog({ auth, products = [], brands = [], categories =
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-                  {availableBrands.map((brand, idx) => (
-                    <motion.button
+                  {availableBrands.map((brand) => (
+                    <button
                       key={brand.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.03 }}
+                      type="button"
                       onClick={() => handleBrandClick(brand.id)}
-                      className="aspect-square bg-white rounded-[1.2rem] flex flex-col items-center justify-center p-4 group hover:shadow-md transition-all text-center"
+                      className="aspect-square bg-white rounded-[1.2rem] flex flex-col items-center justify-center p-4 group hover:shadow-md active:scale-[0.98] transition-all duration-200 text-center cursor-pointer"
                     >
                       <div className="w-20 h-20 md:w-24 md:h-24 flex items-center justify-center mb-3">
                         {brand.logo ? (
-                          <img src={brand.logo} alt={brand.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300" />
+                          <img src={brand.logo} alt={brand.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300" loading="eager" />
                         ) : (
                           <div className="w-full h-full bg-slate-100 rounded-full flex items-center justify-center font-bold text-sm text-slate-400">
                             {brand.name.substring(0, 2).toUpperCase()}
@@ -387,7 +392,7 @@ export default function Catalog({ auth, products = [], brands = [], categories =
                         )}
                       </div>
                       <span className="text-[14px] sm:text-base font-bold tracking-tight text-[#1D1D1F]">{brand.name}</span>
-                    </motion.button>
+                    </button>
                   ))}
                 </div>
               )}
@@ -398,9 +403,10 @@ export default function Catalog({ auth, products = [], brands = [], categories =
           {view === 'products' && (
             <motion.div
               key="products"
-              initial={{ opacity: 0, scale: 1.01 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.99 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               className="space-y-4"
             >
               <div className="flex flex-col gap-3 pt-2">
@@ -432,14 +438,11 @@ export default function Catalog({ auth, products = [], brands = [], categories =
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                  {filteredProducts.map((product, idx) => (
-                    <motion.div 
+                  {filteredProducts.map((product) => (
+                    <div 
                       key={product.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.03 }}
                       onClick={() => handleProductClick(product)}
-                      className="bg-white rounded-[1.2rem] overflow-hidden group flex flex-col h-full shadow-sm hover:shadow-md transition-all cursor-pointer relative"
+                      className="bg-white rounded-[1.2rem] overflow-hidden group flex flex-col h-full shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer relative"
                     >
                       <div className="aspect-square bg-[#FBFBFD] relative overflow-hidden">
                         {product.image_path || (Array.isArray(product.images) && product.images[0]) ? (
@@ -470,7 +473,7 @@ export default function Catalog({ auth, products = [], brands = [], categories =
                         </h3>
                         <p className="text-[10px] font-extrabold text-indigo-650 mt-1">${product.price}</p>
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               )}
