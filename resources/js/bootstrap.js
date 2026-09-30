@@ -8,19 +8,15 @@ if (token) {
     window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
 }
 
-// Handle 419 CSRF Token Mismatch errors safely without infinite reload loops
+// Safety-net: handle 419 errors gracefully for any raw Axios calls.
+// Inertia has its own handling, so this only covers direct axios usage.
 window.axios.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
         if (error.response?.status === 419) {
-            const hasReloaded = sessionStorage.getItem('csrf_419_reloaded');
-            if (!hasReloaded) {
-                sessionStorage.setItem('csrf_419_reloaded', 'true');
-                window.location.reload();
-            } else {
-                sessionStorage.removeItem('csrf_419_reloaded');
-                alert('Session expired or CSRF token mismatch. Please refresh the page and try logging in again.');
-            }
+            // Session expired — redirect to login page cleanly
+            window.location.href = '/login';
+            return new Promise(() => {}); // Prevent further error handling
         }
         return Promise.reject(error);
     }

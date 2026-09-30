@@ -1,9 +1,17 @@
 import '../css/app.css';
 import './bootstrap';
 
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
+
+// Handle session expiry / CSRF mismatch globally for ALL Inertia requests
+router.on('invalid', (event) => {
+    if (event.detail.response.status === 419) {
+        event.preventDefault();
+        window.location.href = '/login';
+    }
+});
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

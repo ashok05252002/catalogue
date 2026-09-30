@@ -209,9 +209,16 @@ export default function Catalog({ auth, products = [], brands = [], categories =
 
   const handleWhatsAppShare = (product) => {
     const bName = product.brand?.name || brands.find(b => b.id === product.brand_id)?.name || '';
-    const whatsappNum = '9149600366747'; // Hardcoded as requested
-    const text = `Hello, I'm interested in the ${product.name} ${bName ? `(${bName})` : ''}. Is it available? \n\nLink: ${window.location.href}`;
-    window.open(`https://wa.me/${whatsappNum}?text=${encodeURIComponent(text)}`, '_blank');
+    const productLink = window.location.origin + window.location.pathname +
+      `?category=${product.category_id || selectedCategory || ''}&brand=${product.brand_id || ''}&product=${product.id}`;
+    const text = `Hello, I'm interested in the ${product.name}${bName ? ` (${bName})` : ''}. Is it available?\n\nProduct Link: ${productLink}`;
+
+    // Copy message to clipboard so user can paste it in WhatsApp
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
+
+    window.open(`https://wa.me/message/IXCA4DF6H7KQE1?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const currentCategory = categories.find(c => c.id === selectedCategory);
