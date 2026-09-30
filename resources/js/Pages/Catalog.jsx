@@ -47,6 +47,7 @@ function replaceURL(gender, categoryId, brandId, productId) {
 // ---------------------------------
 
 export default function Catalog({ auth, products = [], brands = [], categories = [], genders = [] }) {
+  const [toastMessage, setToastMessage] = useState('');
   const [view, setView] = useState(() => {
     if (typeof window === 'undefined') return 'gender';
     const { g, c, b, p } = readParamsFromURL();
@@ -209,16 +210,11 @@ export default function Catalog({ auth, products = [], brands = [], categories =
 
   const handleWhatsAppShare = (product) => {
     const bName = product.brand?.name || brands.find(b => b.id === product.brand_id)?.name || '';
-    const productLink = window.location.origin + window.location.pathname +
-      `?category=${product.category_id || selectedCategory || ''}&brand=${product.brand_id || ''}&product=${product.id}`;
-    const text = `Hello, I'm interested in the ${product.name}${bName ? ` (${bName})` : ''}. Is it available?\n\nProduct Link: ${productLink}`;
+    const productLink = window.location.origin + '/' +
+      `?g=${selectedGender || ''}&c=${product.category_id || selectedCategory || ''}&b=${product.brand_id || ''}&p=${product.id}`;
+    const text = `Hi, I'm interested in *${product.name}*${bName ? ` (${bName})` : ''}. Is it available?\n\nProduct Link: ${productLink}`;
 
-    // Copy message to clipboard so user can paste it in WhatsApp
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).catch(() => {});
-    }
-
-    window.open(`https://wa.me/message/IXCA4DF6H7KQE1?text=${encodeURIComponent(text)}`, '_blank');
+    window.open(`https://wa.me/918807466747?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const currentCategory = categories.find(c => c.id === selectedCategory);
@@ -625,6 +621,28 @@ export default function Catalog({ auth, products = [], brands = [], categories =
           </div>
         </div>
       </footer>
+
+      {/* Toast notification for WhatsApp clipboard copy */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] bg-[#1D1D1F] text-white px-5 py-3.5 rounded-2xl shadow-2xl text-sm font-semibold flex items-center gap-2.5 max-w-[90vw]"
+            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}
+          >
+            <span>{toastMessage}</span>
+            <button
+              onClick={() => setToastMessage('')}
+              className="text-white/50 hover:text-white ml-1 text-lg leading-none transition-colors"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
